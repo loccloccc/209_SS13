@@ -1,0 +1,48 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: campus-hub-mysql
+    environment:
+      MYSQL_DATABASE: campus_hub
+      MYSQL_USER: campus_user
+      MYSQL_PASSWORD: campus_password
+      MYSQL_ROOT_PASSWORD: local_root_password
+    volumes:
+      - campus-hub-mysql-data:/var/lib/mysql
+    networks:
+      - campus-hub-network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: campus-hub-backend:1.0
+    container_name: campus-hub-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/campus_hub?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: campus_user
+      SPRING_DATASOURCE_PASSWORD: campus_password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_OPEN_IN_VIEW: "false"
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - campus-hub-network
+
+networks:
+  campus-hub-network:
+    driver: bridge
+
+volumes:
+  campus-hub-mysql-data:
